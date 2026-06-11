@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Coletas & Entregas — LSA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --linen:#F7F4EE; --paper:#FFFFFF; --ink:#11161B; --ink-soft:#3D4651;
+    --line:#D9D2C4; --line-soft:#E8E2D6;
+    --teal:#0A4843; --teal-bg:#D5E7E3; --brass:#7E5316; --brass-bg:#EFE0C9;
+    --done:#7A828B; --danger:#8F2A1F;
+    --shadow:0 1px 2px rgba(17,22,27,.07), 0 8px 24px rgba(17,22,27,.09);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--linen);color:var(--ink);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+  body{padding-bottom:120px;}
+  body.locked{padding-bottom:0;overflow:hidden;}
+  body.locked #app,body.locked #fabShare,body.locked #fabAdd{display:none!important;}
+  body:not(.locked) #gate{display:none;}
+  h1,h2,h3,.display{font-family:'Bricolage Grotesque','Inter',sans-serif;letter-spacing:-.02em;}
+  .mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+  input,select,textarea{font-family:inherit;font-size:16px;width:100%;}
+  a{color:inherit;text-decoration:none;}
+
+  /* Gate */
+  #gate{position:fixed;inset:0;z-index:90;background:radial-gradient(120% 120% at 50% 0%,#23303a 0%,#161b21 60%,#10141a 100%);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;}
+  #gate .lock{width:60px;height:60px;border-radius:50%;border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;font-size:26px;margin-bottom:20px;background:rgba(255,255,255,.05);}
+  #gate .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#C9A86A;font-weight:600;margin-bottom:6px;}
+  #gate h1{font-size:26px;font-weight:800;margin-bottom:6px;}
+  #gate p{font-size:13.5px;color:rgba(255,255,255,.6);margin-bottom:24px;max-width:280px;}
+  #gate .gbox{width:100%;max-width:320px;}
+  #gate input{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:13px;padding:15px 16px;color:#fff;text-align:center;letter-spacing:.05em;margin-bottom:12px;}
+  #gate input::placeholder{color:rgba(255,255,255,.4);}
+  #gate button{width:100%;background:#C9A86A;color:#161b21;font-weight:800;padding:15px;border-radius:13px;font-size:16px;}
+  #gate button:disabled{opacity:.6;}
+  #gate .err{color:#F2A39A;font-size:13px;min-height:18px;margin-top:12px;font-weight:500;}
+  #gate .mode{position:absolute;bottom:max(20px,env(safe-area-inset-bottom));font-size:11px;color:rgba(255,255,255,.4);letter-spacing:.04em;}
+
+  .topbar{position:sticky;top:0;z-index:30;background:var(--linen);border-bottom:1px solid var(--line);padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));}
+  .brand-row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .brand{display:flex;flex-direction:column;line-height:1.15;min-width:0;}
+  .brand .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--teal);font-weight:600;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .brand .eyebrow .clock{color:var(--ink-soft);letter-spacing:.04em;}
+  .brand .eyebrow .sync{font-size:9.5px;padding:2px 6px;border-radius:5px;letter-spacing:.06em;}
+  .sync.on{background:var(--teal-bg);color:var(--teal);} .sync.off{background:var(--line-soft);color:var(--ink-soft);}
+  .brand .name{font-size:21px;font-weight:800;color:var(--ink);outline:none;border-bottom:1px dashed transparent;}
+  .brand .name:focus{border-bottom-color:var(--brass);}
+  .gear{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;background:var(--paper);font-size:18px;flex:none;}
+
+  .tabs{display:flex;gap:6px;margin-top:14px;background:var(--line-soft);padding:4px;border-radius:12px;}
+  .tab{flex:1;text-align:center;padding:9px 4px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--ink-soft);transition:.15s;}
+  .tab.active{background:var(--paper);color:var(--ink);box-shadow:var(--shadow);}
+
+  .wrap{padding:16px 16px 0 16px;max-width:680px;margin:0 auto;}
+  .filters{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:4px;scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{flex:none;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--paper);font-size:13px;font-weight:500;color:var(--ink-soft);}
+  .chip.active{background:var(--ink);color:#fff;border-color:var(--ink);}
+
+  .day-head{display:flex;align-items:baseline;justify-content:space-between;margin:22px 2px 10px;gap:10px;}
+  .day-head .d-label{font-size:15px;font-weight:700;}
+  .day-head .d-sub{font-size:12px;color:var(--ink-soft);}
+  .day-head .reorder-time{font-size:12px;color:var(--teal);font-weight:600;white-space:nowrap;}
+  .day-head.overdue .d-label{color:var(--danger);}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden;display:flex;}
+  .seq{flex:none;width:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:var(--line-soft);border-right:1px solid var(--line);}
+  .seq .num{font-size:20px;font-weight:800;}
+  .arrows{display:flex;flex-direction:column;gap:2px;}
+  .arrows button{font-size:13px;color:var(--ink-soft);padding:3px;line-height:1;}
+  .arrows button:disabled{opacity:.25;}
+  .body{flex:1;padding:12px 14px;min-width:0;}
+  .meta-top{display:flex;align-items:center;gap:8px;margin-bottom:5px;flex-wrap:wrap;}
+  .pill{font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:6px;}
+  .pill.coleta{background:var(--teal-bg);color:var(--teal);}
+  .pill.entrega{background:var(--brass-bg);color:var(--brass);}
+  .auto-tag{font-size:11px;font-weight:700;color:var(--ink-soft);background:var(--line-soft);padding:3px 7px;border-radius:6px;}
+  .time{font-size:16px;color:var(--ink);font-weight:800;background:var(--line-soft);padding:2px 9px;border-radius:7px;}
+  .cli{font-size:18px;font-weight:700;line-height:1.25;word-break:break-word;}
+  .loc{font-size:14.5px;color:var(--ink-soft);margin-top:3px;word-break:break-word;}
+  .obs{font-size:13.5px;color:var(--ink-soft);font-style:italic;margin-top:5px;}
+  .actions{display:flex;gap:8px;margin-top:11px;flex-wrap:wrap;}
+  .act{display:inline-flex;align-items:center;gap:5px;font-size:13.5px;font-weight:700;padding:8px 12px;border-radius:9px;border:1.5px solid var(--line);background:var(--paper);color:var(--ink);}
+  .act.call{color:var(--teal);border-color:#a8ccc5;}
+  .act.wa{color:#0a5e32;border-color:#a9d8bd;}
+  .act.map{color:var(--brass);border-color:#dcc59a;}
+  .act.waze{color:#1769c4;border-color:#a9caea;}
+  .act.aviso{color:#7a4ba8;border-color:#cdb6e2;}
+  .act.edit{margin-left:auto;color:var(--ink-soft);}
+  .done-row{display:flex;align-items:center;gap:9px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--line);}
+  .check{width:24px;height:24px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;flex:none;transition:.12s;}
+  .done-row.on .check{background:var(--teal);border-color:var(--teal);color:#fff;}
+  .done-row .txt{font-size:13px;font-weight:600;color:var(--ink-soft);}
+  .card.done .body{opacity:.5;}
+  .card.done .cli{text-decoration:line-through;}
+
+  .empty{text-align:center;color:var(--ink-soft);padding:54px 20px;}
+  .empty .big{font-size:40px;margin-bottom:10px;}
+  .empty h3{font-size:18px;margin-bottom:6px;color:var(--ink);}
+  .empty p{font-size:14px;max-width:300px;margin:0 auto;}
+
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin:6px 2px 14px;}
+  .cal-head .mlabel{font-size:18px;font-weight:800;font-family:'Bricolage Grotesque',sans-serif;text-transform:capitalize;}
+  .cal-nav{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--paper);display:grid;place-items:center;font-size:18px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;}
+  .cal-wd{text-align:center;font-size:11px;font-weight:700;color:var(--ink-soft);padding-bottom:4px;}
+  .cal-cell{aspect-ratio:1/1;border-radius:11px;border:1px solid var(--line-soft);background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;font-size:13.5px;font-weight:600;}
+  .cal-cell.blank{background:transparent;border:none;}
+  .cal-cell.today{box-shadow:inset 0 0 0 2px var(--ink);}
+  .cal-cell.sel{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .cal-cell .dots{display:flex;gap:3px;margin-top:4px;}
+  .cal-cell .dot{width:5px;height:5px;border-radius:50%;}
+  .dot.coleta{background:var(--teal);} .dot.entrega{background:var(--brass);}
+  .cal-cell.sel .dot{background:#fff;}
+  .cal-daytitle{margin:20px 2px 12px;font-weight:800;font-size:16px;}
+
+  .fab{position:fixed;right:18px;bottom:calc(20px + env(safe-area-inset-bottom,0));z-index:40;background:var(--ink);color:#fff;border-radius:16px;padding:15px 22px;font-weight:700;font-size:15px;box-shadow:0 8px 28px rgba(27,32,38,.28);display:flex;align-items:center;gap:8px;}
+  .fab .plus{font-size:20px;line-height:1;}
+
+  .overlay{position:fixed;inset:0;z-index:50;background:rgba(27,32,38,.45);display:none;align-items:flex-end;justify-content:center;}
+  .overlay.open{display:flex;}
+  .sheet{background:var(--linen);width:100%;max-width:680px;border-radius:22px 22px 0 0;padding:8px 18px calc(26px + env(safe-area-inset-bottom,0));max-height:92vh;overflow-y:auto;}
+  .grab{width:42px;height:5px;border-radius:3px;background:var(--line);margin:8px auto 14px;}
+  .sheet h2{font-size:20px;font-weight:800;margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+  .field input,.field select,.field textarea{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:13px 14px;color:var(--ink);}
+  .field textarea{resize:vertical;min-height:62px;}
+  .seg{display:flex;gap:8px;}
+  .seg button{flex:1;padding:14px;border-radius:11px;border:1.5px solid var(--line);background:var(--paper);font-weight:700;font-size:14px;color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .seg button .ic{font-size:18px;}
+  .seg button.sel.coleta{border-color:var(--teal);background:var(--teal-bg);color:var(--teal);}
+  .seg button.sel.entrega{border-color:var(--brass);background:var(--brass-bg);color:var(--brass);}
+  .row2{display:flex;gap:12px;} .row2 .field{flex:1;}
+  .save{width:100%;background:var(--ink);color:#fff;padding:16px;border-radius:13px;font-weight:700;font-size:16px;margin-top:6px;}
+  .del-btn{width:100%;background:none;color:var(--danger);padding:13px;font-weight:600;font-size:14px;margin-top:8px;}
+  .hint{font-size:12px;color:var(--ink-soft);background:var(--teal-bg);border-radius:10px;padding:10px 12px;margin:-4px 0 14px;}
+  .settings-item{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .settings-item .lbl{font-weight:600;font-size:14.5px;}
+  .settings-item .desc{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+  .settings-item .go{font-weight:700;color:var(--teal);font-size:14px;white-space:nowrap;}
+  .share-summary{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:16px;margin-bottom:14px;}
+  .share-summary .h{font-weight:700;margin-bottom:8px;}
+  .share-summary ul{list-style:none;font-size:13.5px;color:var(--ink-soft);}
+  .share-summary li{padding:4px 0;border-bottom:1px solid var(--line-soft);} .share-summary li:last-child{border:none;}
+
+  .ro-head{background:var(--ink);color:#fff;padding:max(20px,env(safe-area-inset-top)) 20px 22px;}
+  .ro-head .eyebrow{font-size:11px;letter-spacing:.18em;text-transform:uppercase;opacity:.65;font-weight:600;}
+  .ro-head .name{font-size:24px;font-weight:800;margin:3px 0 8px;}
+  .ro-head .date{font-size:14px;opacity:.85;}
+  .ro-head .prog{margin-top:14px;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);display:inline-block;padding:6px 12px;border-radius:999px;}
+  .ro-foot{text-align:center;font-size:12px;color:var(--ink-soft);padding:30px 20px 50px;}
+  .toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90%;text-align:center;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* Smart capture */
+  .capture{background:var(--teal-bg);border:1px solid #cfe2de;border-radius:13px;padding:12px;margin-bottom:14px;}
+  .capture .clabel{font-size:11.5px;font-weight:700;color:var(--teal);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .capture textarea{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px;color:var(--ink);min-height:64px;resize:vertical;font-size:14px;}
+  .capture .crow{display:flex;gap:8px;margin-top:9px;}
+  .capture .cbtn{flex:1;padding:11px;border-radius:10px;font-weight:700;font-size:13.5px;border:1.5px solid var(--teal);background:var(--paper);color:var(--teal);display:flex;align-items:center;justify-content:center;gap:6px;}
+  .capture .cbtn.primary{background:var(--teal);color:#fff;}
+  .capture .cbtn.rec{background:var(--danger);border-color:var(--danger);color:#fff;animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.65}}
+  .capture .chelp{font-size:11.5px;color:var(--ink-soft);margin-top:7px;line-height:1.4;}
+  /* Notify quick options */
+  .nopt{text-align:left;padding:12px 14px;border:1.5px solid var(--line);border-radius:11px;background:var(--paper);font-size:14.5px;font-weight:600;color:var(--ink);line-height:1.35;}
+  .nopt:active{background:var(--teal-bg);border-color:var(--teal);}
+  /* Driver rows */
+  .drow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:var(--paper);border:1.5px solid var(--line);border-radius:11px;margin-bottom:8px;}
+  .drow .dinfo{min-width:0;}
+  .drow .dn{font-size:15px;font-weight:700;}
+  .drow .dp{font-size:13px;color:var(--ink-soft);margin-top:1px;}
+  .drow .ddel{flex:none;color:var(--danger);font-size:13px;font-weight:700;padding:6px 10px;border:1.5px solid #dcb5af;border-radius:8px;}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important;}}
+</style>
+</head>
+<body class="locked">
+
+<!-- ===== GATE / LOGIN ===== -->
+<div id="gate">
+  <div class="lock">🔒</div>
+  <div class="eyebrow">Lavanderia LSA</div>
+  <h1>Acesso restrito</h1>
+  <p id="gateSub">Digite a senha da equipe para gerenciar coletas e entregas.</p>
+  <div class="gbox">
+    <input id="gatePw" type="password" inputmode="text" placeholder="Senha" autocomplete="current-password">
+    <button id="gateBtn">Entrar</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+  <div class="mode" id="gateMode"></div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand-row">
+      <div class="brand">
+        <span class="eyebrow">LSA · Logística <span class="clock" id="clock">—</span> <span class="sync off" id="syncBadge">local</span></span>
+        <span class="name" id="brandName" contenteditable="true" spellcheck="false">Coletas &amp; Entregas</span>
+      </div>
+      <button class="gear" id="gearBtn" aria-label="Ajustes">⚙</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="agenda" id="tabAgenda">Agenda</button>
+      <button class="tab" data-tab="rota" id="tabRota">Rota do dia</button>
+      <button class="tab" data-tab="calendario" id="tabCal">Calendário</button>
+    </div>
+  </div>
+  <div class="wrap">
+    <div class="filters" id="filters"></div>
+    <div id="list"></div>
+  </div>
+  <button class="fab" id="fabAdd"><span class="plus">+</span> Novo ponto</button>
+</div>
+
+<!-- ===== READ-ONLY SHARED ROUTE ===== -->
+<div id="roView" style="display:none;">
+  <div class="ro-head">
+    <span class="eyebrow">Rota do dia</span>
+    <div class="name" id="roName"></div>
+    <div class="date" id="roDate"></div>
+    <div class="prog" id="roProg"></div>
+  </div>
+  <div class="wrap" id="roList"></div>
+  <div class="ro-foot">Marque cada ponto ao concluir. Esta lista é só para acompanhamento.</div>
+</div>
+
+<!-- ===== EDIT SHEET ===== -->
+<div class="overlay" id="ovEdit">
+  <div class="sheet">
+    <div class="grab"></div>
+    <h2 id="editTitle">Novo ponto</h2>
+    <div class="capture" id="capBox">
+      <div class="clabel">⚡ Captura rápida</div>
+      <textarea id="capText" placeholder="Cole a mensagem do WhatsApp ou toque em 🎤 e dite. Ex.: 'Pode buscar amanhã de manhã 2 cobertores na Rua João Mota 198, telefone 31 99966-6539'"></textarea>
+      <div class="crow">
+        <button type="button" class="cbtn" id="micBtn">🎤 Ditar</button>
+        <button type="button" class="cbtn primary" id="parseBtn">✨ Reconhecer</button>
+      </div>
+      <div class="chelp">Reconhece coleta/entrega, data (hoje, amanhã, dias da semana, dd/mm), hora, endereço, telefone e quantidades. Sempre confira antes de salvar.</div>
+    </div>
+    <div class="field"><label>Tipo</label>
+      <div class="seg" id="segTipo">
+        <button type="button" data-tipo="coleta" class="coleta"><span class="ic">↑</span>Coleta</button>
+        <button type="button" data-tipo="entrega" class="entrega"><span class="ic">↓</span>Entrega</button>
+      </div>
+    </div>
+    <div class="hint" id="autoHint">Ao marcar a coleta como feita, a entrega no mesmo local é criada automaticamente para 7 dias depois.</div>
+    <div class="field"><label>Cliente / referência</label><input id="fCli" placeholder="Ex.: MS Usinagem · Suíte 12" autocomplete="off"></div>
+    <div class="field"><label>Local / endereço</label><input id="fLoc" placeholder="Ex.: Rua João Mota, 198" autocomplete="off"></div>
+    <div class="row2">
+      <div class="field" style="flex:1.3"><label>Data</label><input id="fData" type="date"></div>
+      <div class="field"><label>Horário</label><input id="fHora" type="time"></div>
+    </div>
+    <div class="field"><label>Telefone do cliente (opcional)</label><input id="fTel" type="tel" placeholder="Ex.: 31 99966-6539" inputmode="tel" autocomplete="off"></div>
+    <div class="field"><label>Motorista da rota (opcional)</label><select id="fMot"></select></div>
+    <div class="field"><label>Observação (opcional)</label><textarea id="fObs" placeholder="Ex.: cobrar frete · roupa delicada"></textarea></div>
+    <button class="save" id="saveBtn">Salvar ponto</button>
+    <button class="del-btn" id="delBtn" style="display:none;">Excluir este ponto</button>
+  </div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="overlay" id="ovSet">
+  <div class="sheet">
+    <div class="grab"></div><h2>Ajustes</h2>
+    <div class="settings-item" id="setDrivers"><div><div class="lbl">Motoristas</div><div class="desc">Cadastre os motoristas e seus WhatsApp para enviar a rota.</div></div><span class="go">Gerenciar</span></div>
+    <div class="settings-item" id="setExport"><div><div class="lbl">Backup dos dados</div><div class="desc">Baixa um arquivo com tudo, para guardar ou migrar.</div></div><span class="go">Exportar</span></div>
+    <div class="settings-item" id="setImport"><div><div class="lbl">Restaurar backup</div><div class="desc">Carrega um arquivo exportado anteriormente.</div></div><span class="go">Importar</span></div>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none;">
+    <div class="settings-item" id="setClear"><div><div class="lbl">Limpar concluídos</div><div class="desc">Remove os pontos já marcados como feitos.</div></div><span class="go" style="color:var(--danger)">Limpar</span></div>
+    <div class="settings-item" id="setLogout"><div><div class="lbl">Sair</div><div class="desc">Bloqueia o app e volta para a tela de senha.</div></div><span class="go" style="color:var(--ink-soft)">Sair</span></div>
+  </div>
+</div>
+
+<!-- ===== DRIVERS ===== -->
+<div class="overlay" id="ovDrivers">
+  <div class="sheet">
+    <div class="grab"></div><h2>Motoristas</h2>
+    <div id="driverList"></div>
+    <div class="field" style="margin-top:8px"><label>Nome do motorista</label><input id="dName" placeholder="Ex.: Carlos" autocomplete="off"></div>
+    <div class="field"><label>WhatsApp</label><input id="dPhone" type="tel" placeholder="Ex.: 31 99966-6539" inputmode="tel" autocomplete="off"></div>
+    <button class="save" id="dAdd">Adicionar motorista</button>
+    <button class="del-btn" id="dClose" style="color:var(--ink-soft)">Fechar</button>
+  </div>
+</div>
+
+<!-- ===== SHARE ===== -->
+<div class="overlay" id="ovShare">
+  <div class="sheet">
+    <div class="grab"></div><h2>Enviar rota ao motorista</h2>
+    <div class="share-summary" id="shareSummary"></div>
+    <div class="field" style="margin-top:6px"><label>Enviar para o motorista</label><select id="shareDriver"></select></div>
+    <button class="save" id="shareWA">Enviar no WhatsApp</button>
+    <button class="del-btn" id="shareCopy" style="color:var(--teal)">Copiar link</button>
+  </div>
+</div>
+
+<!-- ===== NOTIFY CLIENT ===== -->
+<div class="overlay" id="ovNotify">
+  <div class="sheet">
+    <div class="grab"></div><h2 id="notifyTitle">Avisar cliente</h2>
+    <div class="field"><label>Mensagem rápida</label>
+      <div id="notifyOpts" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+    <div class="field"><label>Ou escreva a mensagem</label><textarea id="notifyText" placeholder="Digite a mensagem que será enviada..."></textarea></div>
+    <button class="save" id="notifySend">Enviar no WhatsApp</button>
+    <button class="del-btn" id="notifyClose" style="color:var(--ink-soft)">Cancelar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   CONFIGURAÇÃO  —  edite estas linhas
+   ============================================================
+   • Modo LOCAL (padrão): dados só no aparelho, senha abaixo.
+   • Modo FIREBASE: cole a config do projeto em CONFIG.firebase
+     e crie o usuário CONFIG.authEmail no Firebase Authentication.
+     A senha real passa a ser a do Firebase (não a daqui).
+*/
+const CONFIG = {
+  firebase: {
+    apiKey: "AIzaSyB5ikr3JSlReIWlZ08EYrvkViaA8J-VZQ8",
+    authDomain: "lsa-coleta.firebaseapp.com",
+    projectId: "lsa-coleta",
+    storageBucket: "lsa-coleta.firebasestorage.app",
+    messagingSenderId: "1068502686292",
+    appId: "1:1068502686292:web:c68ec9975ea555e705ebc1"
+  },
+  authEmail: "escritoriolsasb@gmail.com",    // usuário fixo da equipe no Firebase Auth
+};
+const LSA_PASSWORD = "lsa123";   // senha do MODO LOCAL (reserva). Ignorada quando o Firebase está ativo.
+
+/* ---------- Storage (cache local) ---------- */
+const Store=(()=>{let ok=true,mem={};try{localStorage.setItem('__t','1');localStorage.removeItem('__t');}catch(e){ok=false;}
+  return{get:k=>{try{return ok?localStorage.getItem(k):(mem[k]??null);}catch(e){return mem[k]??null;}},
+         set:(k,v)=>{try{ok?localStorage.setItem(k,v):(mem[k]=v);}catch(e){mem[k]=v;}},
+         del:k=>{try{ok?localStorage.removeItem(k):delete mem[k];}catch(e){delete mem[k];}}};})();
+
+/* ---------- Brasília time ---------- */
+function brt(){const p={};new Intl.DateTimeFormat('en-CA',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).formatToParts(new Date()).forEach(x=>p[x.type]=x.value);
+  return{date:`${p.year}-${p.month}-${p.day}`,time:`${p.hour}:${p.minute}`};}
+function todayStr(){return brt().date;}
+function addDaysTo(str,n){const [y,m,d]=str.split('-').map(Number);return new Date(Date.UTC(y,m-1,d+n)).toISOString().slice(0,10);}
+function addDays(n){return addDaysTo(todayStr(),n);}
+const WD=['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+const WDS=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const MO=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const MOS=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function wd(str){const [y,m,d]=str.split('-').map(Number);return new Date(Date.UTC(y,m-1,d)).getUTCDay();}
+function fmtDay(str){if(str===todayStr())return'Hoje';if(str===addDays(1))return'Amanhã';if(str===addDays(-1))return'Ontem';return WD[wd(str)];}
+function fmtSub(str){const [y,m,d]=str.split('-').map(Number);return d+' '+MOS[m-1];}
+function digits(t){return(t||'').replace(/\D/g,'');}
+function waNum(t){let n=digits(t);if(n&&n.length<=11)n='55'+n;return n;}
+
+/* ---------- Seed backlog (extraído do histórico) ---------- */
+const SEED=[
+ ['coleta','Cobertor — João Mota','Rua João Mota, 198','2026-06-02','','',''],
+ ['coleta','Cortina nova — Feira Moderna','Rua João Mota, 395A','2026-06-02','','',''],
+ ['coleta','Silvio — Hotel Quadrado','','2026-06-03','','','Coletar e entregar'],
+ ['coleta','MT Auto Elétrica','','2026-06-03','','','150 panos'],
+ ['coleta','JM','','2026-06-03','','',''],
+ ['coleta','Cimcop','','2026-06-03','','',''],
+ ['coleta','Cores','','2026-06-03','','',''],
+ ['coleta','Iron Flat','','2026-06-03','','',''],
+ ['coleta','Nascentes','','2026-06-03','','',''],
+ ['coleta','Vivendas','','2026-06-03','','',''],
+ ['entrega','Edredom — sogra do Deivisson','','2026-06-03','','',''],
+ ['coleta','Clim','','2026-06-08','','',''],
+ ['coleta','Lúcia','','2026-06-08','','',''],
+ ['coleta','Cobertor — Raimundo','Rua Raimundo Júlio de Ramos, 55 — São Bernardo','2026-06-08','','','Quando puderem buscar'],
+ ['coleta','Tapete — Praia','Rua da Praia, 267 (ao lado SJ Construções)','2026-06-08','','31 99666-6539',''],
+ ['coleta','Posto Trevo','','2026-06-11','07:00','','Coleta quinta cedo · entrega toda segunda'],
+ ['coleta','SRK Consultores','Rua Gonçalves Dias, 89 — 10º andar, Ed. Delacroix, Funcionários, BH','2026-06-11','','31 98388-5117','capereira@srk.com.br'],
+ ['coleta','Fisiosaúde','','2026-06-09','','',''],
+ ['coleta','EMPA','','2026-06-12','','','Sexta-feira'],
+ ['coleta','Mel Santa Bárbara','','2026-06-10','','',''],
+ ['coleta','Eduardo — Hotel','','2026-06-10','','',''],
+ ['entrega','Robson','','2026-06-15','','','15 panos'],
+ ['coleta','Cida — coletar urso','Rua Azaléia, 315 — Res. Santo Antônio','2026-06-16','','','Terça, qualquer horário'],
+];
+
+/* ---------- State ---------- */
+let items=[],brand='Coletas & Entregas',drivers=[],activeTab='agenda',filter='todos',editingId=null,editTipo='coleta';
+let calRef=todayStr(),calSel=todayStr(),remoteApplying=false;
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const $=id=>document.getElementById(id);
+
+/* ---------- Firebase data layer ---------- */
+const DB={ mode:'local', ref:null, _setDoc:null, _signOut:null, _auth:null,
+  async connect(pw,onRemote){
+    const cfg=CONFIG.firebase;
+    if(!cfg){this.mode='local';return{ok:true,local:true};}
+    try{
+      const V='https://www.gstatic.com/firebasejs/10.12.2/';
+      const [appM,authM,fsM]=await Promise.all([
+        import(V+'firebase-app.js'),import(V+'firebase-auth.js'),import(V+'firebase-firestore.js')]);
+      const app=appM.initializeApp(cfg);
+      const auth=authM.getAuth(app); this._auth=auth; this._signOut=authM.signOut;
+      const fs=fsM.getFirestore(app);
+      await authM.signInWithEmailAndPassword(auth,CONFIG.authEmail,pw);
+      const ref=fsM.doc(fs,'lsa','state'); this.ref=ref; this._setDoc=fsM.setDoc;
+      const snap=await fsM.getDoc(ref);
+      if(!snap.exists()) await fsM.setDoc(ref,{brand,items,updatedAt:Date.now()});
+      fsM.onSnapshot(ref,s=>{if(s.exists())onRemote(s.data());});
+      this.mode='firebase'; return{ok:true};
+    }catch(e){console.error('Firebase:',e);return{ok:false,error:(e&&e.code)||(e&&e.message)||'erro'};}
+  },
+  push(state){ if(this.mode==='firebase'&&this.ref){ this._setDoc(this.ref,{...state,updatedAt:Date.now()}).catch(e=>console.error('push:',e)); } },
+  async logout(){ try{ if(this.mode==='firebase'&&this._signOut&&this._auth) await this._signOut(this._auth); }catch(e){} }
+};
+
+/* ---------- Load / save ---------- */
+function loadLocal(){
+  try{items=JSON.parse(Store.get('rouparia_items')||'[]');}catch(e){items=[];}
+  try{drivers=JSON.parse(Store.get('rouparia_drivers')||'[]');}catch(e){drivers=[];}
+  brand=Store.get('rouparia_brand')||'Coletas & Entregas';
+  if(!Store.get('rouparia_seeded')&&items.length===0){
+    SEED.forEach((s,i)=>items.push({id:uid(),tipo:s[0],cliente:s[1],local:s[2],data:s[3],hora:s[4],telefone:s[5],obs:s[6],ordem:i,feito:false}));
+    Store.set('rouparia_seeded','1');
+  }
+}
+function save(){
+  Store.set('rouparia_items',JSON.stringify(items));
+  Store.set('rouparia_drivers',JSON.stringify(drivers));
+  Store.set('rouparia_brand',brand);
+  if(!remoteApplying) DB.push({brand,items,drivers});
+}
+function applyRemote(data){
+  remoteApplying=true;
+  if(Array.isArray(data.items)) items=data.items;
+  if(Array.isArray(data.drivers)) drivers=data.drivers;
+  if(data.brand) brand=data.brand;
+  Store.set('rouparia_items',JSON.stringify(items));
+  Store.set('rouparia_drivers',JSON.stringify(drivers));
+  Store.set('rouparia_brand',brand);
+  remoteApplying=false;
+  render();
+}
+
+/* ---------- Filters / grouping ---------- */
+function visibleItems(){
+  let a=[...items];
+  if(filter==='hoje')a=a.filter(i=>i.data===todayStr());
+  else if(filter==='amanha')a=a.filter(i=>i.data===addDays(1));
+  else if(filter==='coleta')a=a.filter(i=>i.tipo==='coleta');
+  else if(filter==='entrega')a=a.filter(i=>i.tipo==='entrega');
+  else if(filter==='pendentes')a=a.filter(i=>!i.feito);
+  if(activeTab==='rota'&&filter==='todos')a=a.filter(i=>i.data>=todayStr()&&!i.feito);
+  return a;
+}
+function groupByDate(a){const g={};a.forEach(i=>(g[i.data]=g[i.data]||[]).push(i));Object.keys(g).forEach(k=>g[k].sort((x,y)=>x.ordem-y.ordem));return g;}
+function buildFilters(){
+  const fl=$('filters');fl.innerHTML='';
+  if(activeTab==='calendario'){fl.style.display='none';return;}fl.style.display='flex';
+  [['todos','Tudo'],['pendentes','Pendentes'],['hoje','Hoje'],['amanha','Amanhã'],['coleta','Coletas'],['entrega','Entregas']].forEach(([k,l])=>{
+    const b=document.createElement('button');b.className='chip'+(filter===k?' active':'');b.textContent=l;
+    b.onclick=()=>{filter=k;buildFilters();render();};fl.appendChild(b);});
+}
+
+/* ---------- Render ---------- */
+function render(){
+  $('brandName').textContent=brand;
+  $('tabAgenda').classList.toggle('active',activeTab==='agenda');
+  $('tabRota').classList.toggle('active',activeTab==='rota');
+  $('tabCal').classList.toggle('active',activeTab==='calendario');
+  $('fabAdd').style.display=activeTab==='calendario'?'none':'flex';
+  if($('fabShare'))$('fabShare').style.display=activeTab==='rota'?'flex':'none';
+  const list=$('list');list.innerHTML='';
+  if(activeTab==='calendario'){renderCalendar(list);return;}
+  const arr=visibleItems();
+  if(arr.length===0){
+    list.innerHTML=`<div class="empty"><div class="big">${activeTab==='rota'?'🧭':'🧺'}</div>
+      <h3>${activeTab==='rota'?'Rota vazia':'Nada por aqui'}</h3>
+      <p>${activeTab==='rota'?'Sem pendências para hoje em diante.':'Toque em “Novo ponto” para cadastrar.'}</p></div>`;return;}
+  const g=groupByDate(arr),dates=Object.keys(g).sort();
+  dates.forEach(date=>{
+    const day=g[date],done=day.filter(i=>i.feito).length,overdue=date<todayStr()&&done<day.length;
+    const h=document.createElement('div');h.className='day-head'+(overdue?' overdue':'');
+    h.innerHTML=`<div><span class="d-label">${fmtDay(date)}${overdue?' · em aberto':''}</span> <span class="d-sub">· ${fmtSub(date)} · ${done}/${day.length}</span></div>`;
+    const sb=document.createElement('button');sb.className='reorder-time';sb.textContent='Ordenar por horário';sb.onclick=()=>sortByTime(date);h.appendChild(sb);
+    list.appendChild(h);
+    day.forEach((it,idx)=>list.appendChild(card(it,idx,day.length,date)));});
+}
+function card(it,idx,total,date){
+  const c=document.createElement('div');c.className='card'+(it.feito?' done':'');const wa=waNum(it.telefone);
+  c.innerHTML=`<div class="seq"><span class="num mono">${idx+1}</span>
+      <div class="arrows"><button data-up ${idx===0?'disabled':''}>▲</button><button data-down ${idx===total-1?'disabled':''}>▼</button></div></div>
+    <div class="body">
+      <div class="meta-top"><span class="pill ${it.tipo}">${it.tipo==='coleta'?'Coleta':'Entrega'}</span>${it.auto?'<span class="auto-tag">auto +7d</span>':''}${it.hora?`<span class="time mono">${it.hora}</span>`:''}</div>
+      <div class="cli">${esc(it.cliente)||'(sem nome)'}</div>
+      ${it.local?`<div class="loc">${esc(it.local)}</div>`:''}
+      ${it.obs?`<div class="obs">${esc(it.obs)}</div>`:''}
+      <div class="actions">
+        ${it.telefone?`<a class="act call" href="tel:${esc(digits(it.telefone))}">📞 Ligar</a>`:''}
+        ${wa?`<a class="act wa" target="_blank" rel="noopener" href="https://wa.me/${wa}">WhatsApp</a>`:''}
+        ${wa?`<button class="act aviso" data-aviso>📣 Avisar</button>`:''}
+        ${it.local?`<button class="act waze" data-waze>🧭 Waze</button>`:''}
+        <button class="act edit" data-edit>Editar</button>
+      </div>
+      <div class="done-row${it.feito?' on':''}" data-done><span class="check">${it.feito?'✓':''}</span><span class="txt">${it.feito?'Concluído':(it.tipo==='coleta'?'Marcar coleta feita':'Marcar como feito')}</span></div>
+    </div>`;
+  c.querySelector('[data-up]').onclick=()=>move(it.id,date,-1);
+  c.querySelector('[data-down]').onclick=()=>move(it.id,date,1);
+  c.querySelector('[data-edit]').onclick=()=>openEdit(it.id);
+  const wz=c.querySelector('[data-waze]');if(wz)wz.onclick=()=>openNav(it.local);
+  const av=c.querySelector('[data-aviso]');if(av)av.onclick=()=>openNotify(it);
+  c.querySelector('[data-done]').onclick=()=>toggleDone(it);
+  return c;
+}
+function esc(s){return(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+/* ---------- Done + auto delivery (+7d) ---------- */
+function toggleDone(it){
+  it.feito=!it.feito;
+  if(it.tipo==='coleta'){
+    if(it.feito&&!it.childId){
+      const d7=addDaysTo(it.data,7);
+      const child={id:uid(),tipo:'entrega',cliente:it.cliente,local:it.local,data:d7,hora:it.hora||'',telefone:it.telefone||'',obs:'Entrega gerada da coleta',ordem:nextOrdem(d7),feito:false,auto:true};
+      items.push(child);it.childId=child.id;
+      toast('Entrega criada para '+WDS[wd(d7)]+', '+fmtSub(d7));
+    }else if(!it.feito&&it.childId){
+      const ch=items.find(x=>x.id===it.childId);
+      if(ch&&ch.auto&&!ch.feito)items=items.filter(x=>x.id!==it.childId);
+      it.childId=null;
+    }
+  }
+  save();render();
+}
+
+/* ---------- Reorder ---------- */
+function move(id,date,dir){
+  const day=items.filter(i=>i.data===date).sort((a,b)=>a.ordem-b.ordem);
+  const i=day.findIndex(x=>x.id===id),j=i+dir;if(j<0||j>=day.length)return;
+  const t=day[i].ordem;day[i].ordem=day[j].ordem;day[j].ordem=t;save();render();
+}
+function sortByTime(date){
+  items.filter(i=>i.data===date).sort((a,b)=>(a.hora||'99:99').localeCompare(b.hora||'99:99')).forEach((it,n)=>it.ordem=n);
+  save();render();toast('Ordenado por horário');
+}
+function nextOrdem(date){const d=items.filter(i=>i.data===date);return d.length?Math.max(...d.map(i=>i.ordem))+1:0;}
+
+/* ---------- Calendar ---------- */
+function renderCalendar(root){
+  const [y,m]=calRef.split('-').map(Number);
+  const head=document.createElement('div');head.className='cal-head';
+  head.innerHTML=`<button class="cal-nav" id="cprev">‹</button><span class="mlabel">${MO[m-1]} ${y}</span><button class="cal-nav" id="cnext">›</button>`;
+  root.appendChild(head);
+  const grid=document.createElement('div');grid.className='cal-grid';
+  WDS.forEach(d=>{const e=document.createElement('div');e.className='cal-wd';e.textContent=d;grid.appendChild(e);});
+  const first=new Date(Date.UTC(y,m-1,1)).getUTCDay(),ndays=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const counts={};items.forEach(i=>{counts[i.data]=counts[i.data]||{c:0,e:0};i.tipo==='coleta'?counts[i.data].c++:counts[i.data].e++;});
+  for(let i=0;i<first;i++){const e=document.createElement('div');e.className='cal-cell blank';grid.appendChild(e);}
+  for(let d=1;d<=ndays;d++){
+    const ds=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell=document.createElement('div');cell.className='cal-cell'+(ds===todayStr()?' today':'')+(ds===calSel?' sel':'');
+    const cc=counts[ds];let dots='';if(cc){if(cc.c)dots+='<span class="dot coleta"></span>';if(cc.e)dots+='<span class="dot entrega"></span>';}
+    cell.innerHTML=`<span>${d}</span><div class="dots">${dots}</div>`;
+    cell.onclick=()=>{calSel=ds;render();};grid.appendChild(cell);
+  }
+  root.appendChild(grid);
+  head.querySelector('#cprev').onclick=()=>{calRef=`${m===1?y-1:y}-${String(m===1?12:m-1).padStart(2,'0')}-01`;render();};
+  head.querySelector('#cnext').onclick=()=>{calRef=`${m===12?y+1:y}-${String(m===12?1:m+1).padStart(2,'0')}-01`;render();};
+  const title=document.createElement('div');title.className='cal-daytitle';
+  title.textContent=`${fmtDay(calSel)} · ${WD[wd(calSel)]}, ${fmtSub(calSel)}`;root.appendChild(title);
+  const dayItems=items.filter(i=>i.data===calSel).sort((a,b)=>a.ordem-b.ordem);
+  if(dayItems.length===0){const e=document.createElement('div');e.className='empty';e.style.padding='30px 20px';e.innerHTML='<p>Nenhum ponto neste dia.</p>';root.appendChild(e);}
+  else dayItems.forEach((it,idx)=>root.appendChild(card(it,idx,dayItems.length,calSel)));
+}
+
+/* ---------- Edit ---------- */
+function openEdit(id){
+  editingId=id;const it=id?items.find(x=>x.id===id):null;
+  $('editTitle').textContent=it?'Editar ponto':'Novo ponto';
+  editTipo=it?it.tipo:'coleta';setTipoUI();
+  $('fCli').value=it?it.cliente:'';$('fLoc').value=it?it.local:'';
+  $('fData').value=it?it.data:(activeTab==='calendario'?calSel:todayStr());
+  $('fHora').value=it?it.hora:'';$('fTel').value=it?it.telefone:'';$('fObs').value=it?it.obs:'';
+  fillDriverSelect();$('fMot').value=it&&it.motorista?it.motorista:'';
+  $('delBtn').style.display=it?'block':'none';
+  $('capText').value='';if(recog){try{recog.stop();}catch(e){}}setMicUI(false);
+  $('capBox').style.display=it?'none':'block';
+  openOv('ovEdit');if(!it)setTimeout(()=>$('capText').focus(),250);
+}
+function setTipoUI(){document.querySelectorAll('#segTipo button').forEach(b=>b.classList.toggle('sel',b.dataset.tipo===editTipo));$('autoHint').style.display=editTipo==='coleta'?'block':'none';}
+function saveItem(){
+  const cli=$('fCli').value.trim(),loc=$('fLoc').value.trim(),data=$('fData').value||todayStr();
+  if(!cli&&!loc){toast('Preencha o cliente ou o local');return;}
+  if(editingId){const it=items.find(x=>x.id===editingId);Object.assign(it,{tipo:editTipo,cliente:cli,local:loc,data,hora:$('fHora').value,telefone:$('fTel').value.trim(),motorista:$('fMot').value,obs:$('fObs').value.trim()});if(it.ordem===undefined)it.ordem=nextOrdem(data);}
+  else items.push({id:uid(),tipo:editTipo,cliente:cli,local:loc,data,hora:$('fHora').value,telefone:$('fTel').value.trim(),motorista:$('fMot').value,obs:$('fObs').value.trim(),ordem:nextOrdem(data),feito:false});
+  save();closeOv('ovEdit');render();
+}
+function delItem(){if(!editingId)return;items=items.filter(x=>x.id!==editingId);save();closeOv('ovEdit');render();}
+
+/* ---------- Smart capture: parser ---------- */
+function parseText(raw){
+  const txt=(raw||'').trim();if(!txt)return null;
+  const t=txt.toLowerCase().replace(/[ãâá]/g,'a').replace(/[éê]/g,'e').replace(/[íî]/g,'i').replace(/[óôõ]/g,'o').replace(/[úû]/g,'u').replace(/ç/g,'c');
+  const out={tipo:'coleta',cliente:'',local:'',data:todayStr(),hora:'',telefone:'',obs:''};
+  // tipo
+  if(/\b(entreg|levar|leve|trazer|devolv|entregar)/.test(t))out.tipo='entrega';
+  else if(/\b(colet|busc|pegar|pegue|retir|passar peg|passar busc)/.test(t))out.tipo='coleta';
+  // data
+  const WDMAP={domingo:0,segunda:1,terca:2,quarta:3,quinta:4,sexta:5,sabado:6};
+  const MESES={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+  if(/\bhoje\b/.test(t))out.data=todayStr();
+  else if(/\bdepois de amanha\b/.test(t))out.data=addDays(2);
+  else if(/\bamanha\b/.test(t))out.data=addDays(1);
+  else{
+    const wdM=t.match(/\b(domingo|segunda|terca|quarta|quinta|sexta|sabado)\b/);
+    const dmY=txt.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+    const dMes=t.match(/\b(\d{1,2})\s+de\s+(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)/);
+    if(wdM){
+      const target=WDMAP[wdM[1]],todayWd=wd(todayStr());let diff=target-todayWd;if(diff<=0)diff+=7;
+      out.data=addDays(diff);
+    }else if(dmY){
+      const d=String(dmY[1]).padStart(2,'0'),m=String(dmY[2]).padStart(2,'0');
+      let y=dmY[3]?(dmY[3].length===2?'20'+dmY[3]:dmY[3]):todayStr().slice(0,4);
+      out.data=`${y}-${m}-${d}`;
+    }else if(dMes){
+      const d=String(dMes[1]).padStart(2,'0'),m=String(MESES[dMes[2]]).padStart(2,'0');
+      out.data=`${todayStr().slice(0,4)}-${m}-${d}`;
+    }
+  }
+  // hora explicita
+  let hm=txt.match(/\b(\d{1,2})[h:](\d{2})\b/)||txt.match(/\b(\d{1,2})\s*h(?:oras?)?\b/i);
+  if(hm){const h=String(hm[1]).padStart(2,'0'),mn=hm[2]?String(hm[2]).padStart(2,'0'):'00';if(+h<24&&+mn<60)out.hora=`${h}:${mn}`;}
+  if(!out.hora){
+    if(/\bmeio[\s-]?dia\b/.test(t))out.hora='12:00';
+    else if(/\bfim de tarde|final da tarde\b/.test(t))out.hora='17:00';
+    else if(/\bde manha|pela manha|manha cedo|cedo\b/.test(t))out.hora='08:00';
+    else if(/\bde tarde|a tarde|pela tarde\b/.test(t))out.hora='14:00';
+    else if(/\bde noite|a noite|pela noite\b/.test(t))out.hora='19:00';
+  }
+  // telefone
+  const ph=txt.match(/\(?\s*\d{2}\s*\)?\s*9?\s*\d{4}[\s-]?\d{4}/);
+  if(ph)out.telefone=ph[0].replace(/\s+/g,' ').trim();
+  // endereco
+  const ad=txt.match(/\b(rua|r\.|av\.?|avenida|travessa|tv\.?|alameda|al\.?|pra[cç]a|estrada|rod\.?|rodovia)\s+[^,\n.;]+?(?:,?\s*n?\.?\s*\d+[a-zA-Z]?)?(?:\s*[-—–]\s*[^,\n.;]+)?(?:,\s*[^,\n.;]+)?/i);
+  if(ad)out.local=ad[0].replace(/\s+/g,' ').trim().replace(/[.,;]$/,'');
+  // observacao: quantidade + item
+  const qty=txt.match(/\b(\d+)\s+(cobertor(?:es)?|panos?|edredo[mn]s?|tapetes?|uniformes?|epis?|toalhas?|len[cç]ois?|cortinas?|jalecos?|aventais?|macac[oõ]es?)/i);
+  if(qty)out.obs=qty[0].toLowerCase();
+  // cliente: depois de "cliente:" ou nome proprio inicial
+  let cli=txt.match(/cliente[:\s]+([^,\n.;]+)/i);
+  if(cli)out.cliente=cli[1].trim();
+  else{
+    const np=txt.match(/\b(?:do|da|de|para o|para a|pra)\s+(?:sr\.?\s+|sra\.?\s+|dr\.?\s+)?([A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+(?:\s+[A-ZÁÉÍÓÚÂÊÔÃÕÇ][a-záéíóúâêôãõç]+){0,2})/);
+    if(np)out.cliente=np[1].trim();
+  }
+  return out;
+}
+function applyCapture(){
+  const parsed=parseText($('capText').value);
+  if(!parsed){toast('Cole ou dite uma mensagem primeiro');return;}
+  editTipo=parsed.tipo;setTipoUI();
+  if(parsed.cliente)$('fCli').value=parsed.cliente;
+  if(parsed.local)$('fLoc').value=parsed.local;
+  if(parsed.data)$('fData').value=parsed.data;
+  if(parsed.hora)$('fHora').value=parsed.hora;
+  if(parsed.telefone)$('fTel').value=parsed.telefone;
+  if(parsed.obs)$('fObs').value=parsed.obs;
+  toast('Reconhecido — confira e salve');
+}
+
+/* ---------- Voice recognition (pt-BR) ---------- */
+let recog=null;
+function toggleMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voz não disponível neste navegador. Use Chrome no Android.');return;}
+  if(recog){try{recog.stop();}catch(e){}return;}
+  recog=new SR();recog.lang='pt-BR';recog.continuous=true;recog.interimResults=true;
+  const ta=$('capText');let base=ta.value;if(base&&!/\s$/.test(base))base+=' ';
+  recog.onresult=e=>{let interim='',finalAdd='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];if(r.isFinal)finalAdd+=r[0].transcript+' ';else interim+=r[0].transcript;}
+    base+=finalAdd;ta.value=base+interim;};
+  recog.onend=()=>{recog=null;setMicUI(false);};
+  recog.onerror=e=>{toast('Voz: '+(e.error||'erro'));recog=null;setMicUI(false);};
+  try{recog.start();setMicUI(true);}catch(e){recog=null;setMicUI(false);}
+}
+function setMicUI(on){const b=$('micBtn');if(!b)return;b.textContent=on?'⏹ Parar':'🎤 Ditar';b.classList.toggle('rec',on);}
+
+/* ---------- Overlays / toast ---------- */
+function openOv(id){$(id).classList.add('open');}
+function closeOv(id){$(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)ov.classList.remove('open');}));
+let tT;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tT);tT=setTimeout(()=>t.classList.remove('show'),2400);}
+
+/* ---------- Share ---------- */
+function openShare(){
+  const date=(filter==='amanha')?addDays(1):(activeTab==='calendario'?calSel:todayStr());
+  const day=items.filter(i=>i.data===date&&!i.feito).sort((a,b)=>a.ordem-b.ordem);
+  if(day.length===0){toast('Sem pontos pendentes nesse dia');return;}
+  $('shareSummary').innerHTML=`<div class="h">${fmtDay(date)}, ${fmtSub(date)} — ${day.length} parada(s)</div><ul>${day.map((it,n)=>`<li><b class="mono">${n+1}.</b> ${it.tipo==='coleta'?'Coleta':'Entrega'} · ${esc(it.cliente)||esc(it.local)}${it.hora?' · '+it.hora:''}</li>`).join('')}</ul>`;
+  const payload={n:brand,d:date,s:day.map(it=>({t:it.tipo[0],c:it.cliente,l:it.local,h:it.hora,p:it.telefone,o:it.obs}))};
+  const link=location.href.split('#')[0]+'#r='+encodeURIComponent(b64e(JSON.stringify(payload)));
+  // driver picker
+  const sel=$('shareDriver');
+  sel.innerHTML='<option value="">— escolher / digitar na hora —</option>'+drivers.map(d=>`<option value="${d.id}">${esc(d.nome)}${d.telefone?' ('+esc(d.telefone)+')':''}</option>`).join('');
+  // pre-select most common driver among the day's items
+  const counts={};day.forEach(it=>{if(it.motorista)counts[it.motorista]=(counts[it.motorista]||0)+1;});
+  const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];if(top)sel.value=top;
+  const txt=`Rota — ${fmtDay(date)} ${fmtSub(date)}\nAbra na ordem certa:\n${link}`;
+  $('shareWA').onclick=()=>{
+    const d=drivers.find(x=>x.id===sel.value);const wa=d?waNum(d.telefone):'';
+    window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(txt),'_blank');
+  };
+  $('shareCopy').onclick=()=>navigator.clipboard?navigator.clipboard.writeText(link).then(()=>toast('Link copiado')).catch(()=>toast('Copie da barra de endereço')):toast('Copie da barra de endereço');
+  openOv('ovShare');
+}
+function b64e(s){return btoa(unescape(encodeURIComponent(s)));}
+function b64d(s){return decodeURIComponent(escape(atob(s)));}
+
+/* ---------- Navigation: Waze first, Google Maps fallback ---------- */
+function openNav(local){
+  if(!local){toast('Sem endereço para navegar');return;}
+  const q=encodeURIComponent(local);
+  const waze='https://waze.com/ul?q='+q+'&navigate=yes';
+  const maps='https://www.google.com/maps/dir/?api=1&destination='+q;
+  let fell=false;
+  const t=setTimeout(()=>{if(!fell){fell=true;window.open(maps,'_blank');}},1400);
+  // try opening Waze; if app/site not available, the visibilitychange won't fire and we fallback
+  const onHide=()=>{fell=true;clearTimeout(t);document.removeEventListener('visibilitychange',onHide);};
+  document.addEventListener('visibilitychange',onHide);
+  try{window.location.href=waze;}catch(e){clearTimeout(t);window.open(maps,'_blank');}
+}
+
+/* ---------- Notify client (quick options + free text) ---------- */
+let notifyWa='';
+function openNotify(it){
+  const wa=waNum(it.telefone);if(!wa){toast('Cliente sem WhatsApp cadastrado');return;}
+  notifyWa=wa;
+  const nome=(it.cliente||'').split('—')[0].split('·')[0].trim();
+  const ola=nome?`Olá, ${nome}! `:'Olá! ';
+  const ac=it.tipo==='coleta'?'coleta':'entrega';
+  const opts=[
+    `${ola}Aqui é da Lavanderia LSA. Já estamos saindo para a ${ac}. Em breve chegamos!`,
+    `${ola}Estamos a caminho para a ${ac}. Qualquer coisa, é só chamar por aqui.`,
+    `${ola}Chegamos para a ${ac}. Pode nos receber? 😊`,
+    `${ola}Tivemos um pequeno atraso na rota, mas já estamos indo para a ${ac}. Obrigado pela compreensão!`
+  ];
+  $('notifyTitle').textContent='Avisar '+(nome||'cliente');
+  const box=$('notifyOpts');box.innerHTML='';
+  opts.forEach(msg=>{const b=document.createElement('button');b.type='button';b.className='nopt';b.textContent=msg;
+    b.onclick=()=>{$('notifyText').value=msg;};box.appendChild(b);});
+  $('notifyText').value='';
+  openOv('ovNotify');
+}
+function sendNotify(){
+  const msg=$('notifyText').value.trim();
+  if(!msg){toast('Escolha ou escreva uma mensagem');return;}
+  window.open('https://wa.me/'+notifyWa+'?text='+encodeURIComponent(msg),'_blank');
+  closeOv('ovNotify');
+}
+
+/* ---------- Drivers ---------- */
+function renderDrivers(){
+  const box=$('driverList');if(!box)return;
+  if(drivers.length===0){box.innerHTML='<div style="color:var(--ink-soft);font-size:13.5px;padding:4px 2px 10px;">Nenhum motorista cadastrado ainda.</div>';return;}
+  box.innerHTML='';
+  drivers.forEach(d=>{const row=document.createElement('div');row.className='drow';
+    row.innerHTML=`<div class="dinfo"><div class="dn">${esc(d.nome)}</div><div class="dp">${esc(d.telefone)||'sem WhatsApp'}</div></div><button class="ddel">Remover</button>`;
+    row.querySelector('.ddel').onclick=()=>{if(confirm('Remover '+d.nome+'?')){drivers=drivers.filter(x=>x.id!==d.id);save();renderDrivers();fillDriverSelect();}};
+    box.appendChild(row);});
+}
+function addDriver(){
+  const nome=$('dName').value.trim(),tel=$('dPhone').value.trim();
+  if(!nome){toast('Digite o nome do motorista');return;}
+  drivers.push({id:uid(),nome,telefone:tel});
+  save();$('dName').value='';$('dPhone').value='';renderDrivers();fillDriverSelect();toast('Motorista adicionado');
+}
+function fillDriverSelect(){
+  const sel=$('fMot');if(!sel)return;const cur=sel.value;
+  sel.innerHTML='<option value="">— sem motorista —</option>'+drivers.map(d=>`<option value="${d.id}">${esc(d.nome)}</option>`).join('');
+  sel.value=cur;
+}
+
+/* ---------- Read-only shared route ---------- */
+function checkShared(){
+  if(!location.hash.startsWith('#r='))return false;
+  let data;try{data=JSON.parse(b64d(decodeURIComponent(location.hash.slice(3))));}catch(e){return false;}
+  document.body.classList.remove('locked');
+  $('app').style.display='none';$('gate').style.display='none';$('roView').style.display='block';
+  $('roName').textContent=data.n||'Rota';$('roDate').textContent=fmtDay(data.d)+', '+fmtSub(data.d);
+  const stops=data.s||[],ro=$('roList'),done=new Set();
+  (function paint(){
+    $('roProg').textContent=`${done.size} de ${stops.length} concluídas`;ro.innerHTML='';
+    stops.forEach((s,idx)=>{const tipo=s.t==='c'?'coleta':'entrega',wa=waNum(s.p);
+      const c=document.createElement('div');c.className='card'+(done.has(idx)?' done':'');c.style.marginTop='12px';
+      c.innerHTML=`<div class="seq"><span class="num mono">${idx+1}</span></div><div class="body">
+        <div class="meta-top"><span class="pill ${tipo}">${tipo==='coleta'?'Coleta':'Entrega'}</span>${s.h?`<span class="time mono">${s.h}</span>`:''}</div>
+        <div class="cli">${esc(s.c)||'(sem nome)'}</div>${s.l?`<div class="loc">${esc(s.l)}</div>`:''}${s.o?`<div class="obs">${esc(s.o)}</div>`:''}
+        <div class="actions">${s.p?`<a class="act call" href="tel:${esc(digits(s.p))}">📞 Ligar</a>`:''}${wa?`<a class="act wa" target="_blank" rel="noopener" href="https://wa.me/${wa}">WhatsApp</a>`:''}${s.l?`<button class="act waze" data-waze="${idx}">🧭 Waze</button>`:''}</div>
+        <div class="done-row${done.has(idx)?' on':''}" data-i="${idx}"><span class="check">${done.has(idx)?'✓':''}</span><span class="txt">${done.has(idx)?'Concluído':'Marcar como feito'}</span></div></div>`;
+      c.querySelector('[data-i]').onclick=()=>{done.has(idx)?done.delete(idx):done.add(idx);paint();};
+      const wz=c.querySelector('[data-waze]');if(wz)wz.onclick=()=>openNav(s.l);
+      ro.appendChild(c);});
+  })();
+  return true;
+}
+
+/* ---------- Export / Import ---------- */
+function exportData(){const b=new Blob([JSON.stringify({brand,items},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='lsa-backup-'+todayStr()+'.json';a.click();URL.revokeObjectURL(a.href);closeOv('ovSet');toast('Backup baixado');}
+function importData(f){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(Array.isArray(d.items)){items=d.items;if(d.brand)brand=d.brand;save();render();closeOv('ovSet');toast('Backup restaurado');}else toast('Arquivo inválido');}catch(e){toast('Arquivo inválido');}};r.readAsText(f);}
+
+/* ---------- Clock ---------- */
+function tick(){$('clock').textContent=brt().time+' BRT';}
+
+/* ---------- Gate / login ---------- */
+function gErr(m){$('gateErr').textContent=m||'';}
+function errMsg(code){
+  if(!code)return'Não foi possível entrar. Tente de novo.';
+  if(/wrong-password|invalid-credential|invalid-login/.test(code))return'Senha incorreta.';
+  if(/network/.test(code))return'Sem conexão com o servidor.';
+  if(/too-many-requests/.test(code))return'Muitas tentativas. Aguarde um momento.';
+  if(/user-not-found/.test(code))return'Usuário da equipe não encontrado no Firebase.';
+  return'Erro: '+code;
+}
+async function attemptLogin(){
+  const pw=$('gatePw').value;
+  if(!pw){gErr('Digite a senha');return;}
+  gErr('');$('gateBtn').disabled=true;$('gateBtn').textContent='Entrando…';
+  if(CONFIG.firebase){
+    const r=await DB.connect(pw,applyRemote);
+    $('gateBtn').disabled=false;$('gateBtn').textContent='Entrar';
+    if(!r.ok){gErr(errMsg(r.error));return;}
+    openApp(true);
+  }else{
+    $('gateBtn').disabled=false;$('gateBtn').textContent='Entrar';
+    if(pw===LSA_PASSWORD){try{sessionStorage.setItem('lsa_ok','1');}catch(e){}openApp(false);}
+    else gErr('Senha incorreta.');
+  }
+}
+function openApp(firebase){
+  document.body.classList.remove('locked');
+  $('gatePw').value='';
+  $('syncBadge').textContent=firebase?'sincronizado':'local';
+  $('syncBadge').className='sync '+(firebase?'on':'off');
+  buildFilters();render();tick();setInterval(tick,30000);
+}
+function logout(){
+  closeOv('ovSet');
+  try{sessionStorage.removeItem('lsa_ok');}catch(e){}
+  DB.logout();
+  document.body.classList.add('locked');
+  gErr('');$('gatePw').focus();
+}
+
+/* ---------- Init ---------- */
+function init(){
+  loadLocal();
+  if(checkShared())return;
+  $('gateMode').textContent=CONFIG.firebase?'Modo nuvem (Firebase) · sincronizado entre aparelhos':'Modo local · dados neste aparelho';
+  $('gateSub').textContent=CONFIG.firebase?'Entre com a senha da equipe LSA. Os dados sincronizam entre os aparelhos.':'Digite a senha da equipe para gerenciar coletas e entregas.';
+  // app wiring
+  $('fabAdd').onclick=()=>openEdit(null);
+  $('tabAgenda').onclick=()=>{activeTab='agenda';buildFilters();render();};
+  $('tabRota').onclick=()=>{activeTab='rota';buildFilters();render();};
+  $('tabCal').onclick=()=>{activeTab='calendario';buildFilters();render();};
+  document.querySelectorAll('#segTipo button').forEach(b=>b.onclick=()=>{editTipo=b.dataset.tipo;setTipoUI();});
+  $('saveBtn').onclick=saveItem;$('delBtn').onclick=delItem;$('gearBtn').onclick=()=>openOv('ovSet');
+  $('parseBtn').onclick=applyCapture;$('micBtn').onclick=toggleMic;
+  $('setDrivers').onclick=()=>{renderDrivers();closeOv('ovSet');openOv('ovDrivers');};
+  $('dAdd').onclick=addDriver;$('dClose').onclick=()=>closeOv('ovDrivers');
+  $('notifySend').onclick=sendNotify;$('notifyClose').onclick=()=>closeOv('ovNotify');
+  $('setExport').onclick=exportData;$('setImport').onclick=()=>$('importFile').click();
+  $('importFile').onchange=e=>{if(e.target.files[0])importData(e.target.files[0]);};
+  $('setClear').onclick=()=>{items=items.filter(i=>!i.feito);save();render();closeOv('ovSet');toast('Concluídos removidos');};
+  $('setLogout').onclick=logout;
+  const bn=$('brandName');
+  bn.addEventListener('blur',()=>{brand=bn.textContent.trim()||'Coletas & Entregas';bn.textContent=brand;save();});
+  bn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();bn.blur();}});
+  const sf=document.createElement('button');sf.className='fab';sf.id='fabShare';sf.style.left='18px';sf.style.right='auto';sf.style.background='var(--teal)';sf.innerHTML='↗ Enviar rota';sf.onclick=openShare;sf.style.display='none';document.body.appendChild(sf);
+  // gate wiring
+  $('gateBtn').onclick=attemptLogin;
+  $('gatePw').addEventListener('keydown',e=>{if(e.key==='Enter')attemptLogin();});
+  // auto-unlock for local session
+  let unlocked=false;try{unlocked=sessionStorage.getItem('lsa_ok')==='1';}catch(e){}
+  if(!CONFIG.firebase&&unlocked){openApp(false);}
+  else setTimeout(()=>$('gatePw').focus(),200);
+}
+init();
+</script>
+</body>
+</html>
